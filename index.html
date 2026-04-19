@@ -4,74 +4,470 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Daily Dashboard</title>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     :root {
       --bg: #F5F5F7; --card-bg: #FFFFFF; --card-inner: #F9F9FB; --border: #E5E5EA;
       --hover: #F2F2F7; --text-primary: #1D1D1F; --text-secondary: #6E6E73;
       --text-tertiary: #AEAEB2; --pill-bg: #F2F2F7; --pill-color: #6E6E73;
       --pill-active-bg: #1D1D1F; --pill-active-color: #FFFFFF; --accent: #007AFF;
-      --accent-subtle: #007AFF0A; --tag-bg: #F2F2F7; --tag-color: #6E6E73; --input-bg: #FFFFFF;
+      --accent-subtle: rgba(0,122,255,0.06); --tag-bg: #F2F2F7; --tag-color: #6E6E73;
+      --input-bg: #FFFFFF; --shadow: 0 1px 4px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.03);
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #000000; --card-bg: #1C1C1E; --card-inner: #2C2C2E; --border: #38383A;
+        --bg: #000; --card-bg: #1C1C1E; --card-inner: #2C2C2E; --border: #38383A;
         --hover: #2C2C2E; --text-primary: #F5F5F7; --text-secondary: #A1A1A6;
         --text-tertiary: #636366; --pill-bg: #2C2C2E; --pill-color: #A1A1A6;
         --pill-active-bg: #F5F5F7; --pill-active-color: #1D1D1F; --accent: #0A84FF;
-        --accent-subtle: #0A84FF12; --tag-bg: #2C2C2E; --tag-color: #A1A1A6; --input-bg: #2C2C2E;
+        --accent-subtle: rgba(10,132,255,0.1); --tag-bg: #2C2C2E; --tag-color: #A1A1A6; --input-bg: #2C2C2E;
       }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; -webkit-font-smoothing: antialiased; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes slideIn { from { transform:translateX(100%); } to { transform:translateX(0); } }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+    button { font-family: inherit; cursor: pointer; }
+    a { text-decoration: none; }
+    .header { padding: 32px 28px 0; max-width: 760px; margin: 0 auto; }
+    .date-str { font-size: 14px; color: var(--text-tertiary); font-weight: 500; margin-bottom: 4px; }
+    .greeting { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 24px; }
+    .content { max-width: 760px; margin: 0 auto; padding: 0 28px 60px; animation: fadeIn 0.35s ease; }
+    .nav { display: flex; gap: 6px; margin-bottom: 24px; padding: 4px; background: var(--card-bg); border-radius: 14px; width: fit-content; box-shadow: var(--shadow); }
+    .nav-btn { display: flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: 10px; border: none; font-size: 14px; font-weight: 500; transition: all 0.25s; background: transparent; color: var(--pill-color); }
+    .nav-btn.active { background: var(--pill-active-bg); color: var(--pill-active-color); }
+    .card { background: var(--card-bg); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow); }
+    .pills { padding: 18px 20px 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .pill { padding: 7px 16px; border-radius: 100px; border: none; font-size: 13px; font-weight: 500; transition: all 0.25s; background: var(--pill-bg); color: var(--pill-color); }
+    .pill.active { background: var(--pill-active-bg); color: var(--pill-active-color); }
+    .news-item { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; transition: background 0.2s; cursor: pointer; border-left: 3px solid transparent; }
+    .news-item:hover { background: var(--hover); }
+    .news-item.active { background: var(--accent-subtle); border-left-color: var(--accent); }
+    .news-item:last-child { border-bottom: none; }
+    .news-thumb { width: 72px; height: 50px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+    .news-title { font-size: 14px; font-weight: 500; line-height: 1.4; margin-bottom: 6px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .news-meta { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-tertiary); flex-wrap: wrap; }
+    .news-source { font-weight: 500; color: var(--text-secondary); }
+    .tag { background: var(--tag-bg); color: var(--tag-color); padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 500; }
+    .f1-header { background: linear-gradient(135deg, #E10600 0%, #1E1E1E 100%); border-radius: 16px; padding: 22px 24px; margin-bottom: 20px; color: white; }
+    .f1-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; margin-bottom: 6px; }
+    .f1-race { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    .f1-circuit { font-size: 13px; opacity: 0.8; }
+    .standings { background: var(--card-inner); border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+    .standing-row { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 12px; }
+    .standing-row:last-child { border-bottom: none; }
+    .standing-pos { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+    .standing-name { font-size: 14px; font-weight: 500; }
+    .standing-team { font-size: 12px; color: var(--text-tertiary); }
+    .standing-pts { font-size: 15px; font-weight: 600; margin-left: auto; }
+    .standing-pts span { font-size: 11px; font-weight: 400; color: var(--text-tertiary); }
+    .section-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+    .jobs-container { padding: 20px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; margin-bottom: 24px; }
+    .stat-card { background: var(--card-inner); border-radius: 14px; padding: 16px 14px; text-align: center; }
+    .stat-num { font-size: 26px; font-weight: 700; }
+    .stat-label { font-size: 10px; font-weight: 500; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+    .job-links { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+    .job-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 500; background: var(--card-inner); color: var(--accent); border: 1px solid var(--border); transition: all 0.2s; }
+    .job-link:hover { background: var(--accent); color: white; }
+    .add-job-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 18px; border-radius: 12px; border: 1px dashed var(--border); background: transparent; color: var(--accent); font-size: 14px; font-weight: 500; margin-bottom: 16px; }
+    .job-form { background: var(--card-inner); border-radius: 14px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); animation: fadeIn 0.3s ease; }
+    .form-field { margin-bottom: 14px; }
+    .form-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; display: block; }
+    .form-input { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-primary); font-size: 14px; outline: none; font-family: inherit; }
+    .btn-primary { padding: 10px 24px; border-radius: 10px; border: none; background: var(--accent); color: white; font-size: 14px; font-weight: 600; font-family: inherit; }
+    .btn-secondary { padding: 10px 24px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 14px; font-weight: 500; font-family: inherit; margin-left: 10px; }
+    .job-list { background: var(--card-inner); border-radius: 14px; overflow: hidden; }
+    .job-item { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .job-item:last-child { border-bottom: none; }
+    .job-title-text { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+    .job-company { font-size: 12px; color: var(--text-tertiary); }
+    .job-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .status-badge { padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; border: none; font-family: inherit; cursor: pointer; }
+    .remove-btn { background: none; border: none; color: var(--text-tertiary); font-size: 18px; padding: 2px 4px; }
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 999; }
+    .detail-panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 90vw); background: var(--card-bg); box-shadow: -8px 0 40px rgba(0,0,0,0.12); z-index: 1000; display: flex; flex-direction: column; animation: slideIn 0.3s cubic-bezier(.4,0,.2,1); }
+    .panel-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .panel-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+    .close-btn { background: var(--pill-bg); border: none; border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
+    .panel-article { padding: 20px; border-bottom: 1px solid var(--border); overflow-y: auto; max-height: 42%; flex-shrink: 0; }
+    .panel-img { width: 100%; height: 160px; object-fit: cover; border-radius: 12px; margin-bottom: 14px; }
+    .panel-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; font-size: 12px; }
+    .panel-art-title { font-size: 17px; font-weight: 600; line-height: 1.35; margin-bottom: 10px; }
+    .panel-art-body { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    .chat-section { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .chat-label { padding: 10px 20px 6px; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text-secondary); flex-shrink: 0; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 4px 20px 10px; }
+    .chat-hint { font-size: 12px; color: var(--text-tertiary); margin-bottom: 10px; margin-top: 12px; }
+    .suggestion-btn { display: block; width: 100%; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card-inner); color: var(--text-secondary); font-size: 12px; text-align: left; margin-bottom: 6px; font-family: inherit; }
+    .message { margin-bottom: 8px; display: flex; }
+    .message.user { justify-content: flex-end; }
+    .message-bubble { max-width: 85%; padding: 9px 13px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+    .msg-user { background: var(--accent); color: white; border-radius: 14px 14px 4px 14px; }
+    .msg-assistant { background: var(--card-inner); color: var(--text-primary); border-radius: 14px 14px 14px 4px; }
+    .thinking { animation: pulse 1.2s infinite; }
+    .chat-input-area { padding: 10px 20px 14px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-shrink: 0; }
+    .chat-input { flex: 1; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-primary); font-size: 13px; outline: none; font-family: inherit; }
+    .send-btn { width: 38px; height: 38px; border-radius: 10px; border: none; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+    .team-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .team-chip { padding: 6px 14px; border-radius: 100px; font-size: 12px; font-weight: 500; background: var(--accent-subtle); color: var(--accent); }
+    .inner-card { background: var(--card-inner); border-radius: 12px; overflow: hidden; }
+    .sec-pad { padding: 10px 20px 20px; }
+    .links-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
-    
-    function Dashboard() {
-      const [section, setSection] = useState("news");
-      const [newsTab, setNewsTab] = useState("world");
-      
-      const newsData = [
-        { title: "Global Leaders Meet at G20 Summit", source: "Reuters", time: "2h ago", tag: "World" },
-        { title: "Federal Reserve Signals Cautious Approach on Rates", source: "Bloomberg", time: "1h ago", tag: "Monetary" },
-        { title: "Major Tech Acquisition Announced at $12B", source: "Bloomberg", time: "1h ago", tag: "M&A" },
-      ];
-      
-      return (
-        <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "32px 28px" }}>
-          <div style={{ maxWidth: 720, margin: "0 auto" }}>
-            <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 24, letterSpacing: "-0.02em" }}>Good Morning.</h1>
-            
-            <div style={{ background: "var(--card-bg)", borderRadius: 20, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-              <div style={{ padding: "20px", borderBottom: "1px solid var(--border)" }}>
-                <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>📰 News</h2>
-                {newsData.map((item, i) => (
-                  <div key={i} style={{ padding: "14px 0", borderTop: i > 0 ? "1px solid var(--border)" : "none" }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 6 }}>{item.title}</div>
-                    <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-                      {item.source} · {item.time}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div style={{ padding: "20px", textAlign: "center", color: "var(--text-secondary)" }}>
-                <p>✅ Your dashboard is live and ready!</p>
-                <p style={{ fontSize: 12, marginTop: 8 }}>Click to expand sections to see full content.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    
-    ReactDOM.render(<Dashboard />, document.getElementById('root'));
-  </script>
+<div id="app"></div>
+<script>
+var NEWS_DATA = {
+  world: [
+    { title: "Global Leaders Meet at G20 Summit to Discuss Trade", source: "Reuters", time: "2h ago", tag: "World", img: "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=400&h=250&fit=crop" },
+    { title: "UN Climate Report Warns of Accelerating Change", source: "BBC News", time: "3h ago", tag: "Climate", img: "https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?w=400&h=250&fit=crop" },
+    { title: "EU Proposes New Digital Regulation Framework", source: "Financial Times", time: "4h ago", tag: "Policy", img: "https://images.unsplash.com/photo-1493946740644-2d8a1f1a6aff?w=400&h=250&fit=crop" },
+    { title: "Major Infrastructure Deal Signed in Southeast Asia", source: "Bloomberg", time: "5h ago", tag: "Development", img: "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=400&h=250&fit=crop" }
+  ],
+  finance: [
+    { title: "Federal Reserve Signals Cautious Approach on Rates", source: "Bloomberg", time: "1h ago", tag: "Monetary", img: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=400&h=250&fit=crop" },
+    { title: "European Banks Report Strong Q1 Earnings", source: "Financial Times", time: "2h ago", tag: "Banking", img: "https://images.unsplash.com/photo-1501167786227-4cba60f6d58f?w=400&h=250&fit=crop" },
+    { title: "Private Credit Market Reaches Record Size", source: "Reuters", time: "3h ago", tag: "Credit", img: "https://images.unsplash.com/photo-1559526324-593bc073d938?w=400&h=250&fit=crop" },
+    { title: "UK Inflation Figures Beat Expectations", source: "Reuters", time: "4h ago", tag: "Economy", img: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=400&h=250&fit=crop" }
+  ],
+  ma: [
+    { title: "Major Tech Acquisition Announced at $12B Valuation", source: "Bloomberg", time: "1h ago", tag: "Tech M&A", img: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400&h=250&fit=crop" },
+    { title: "Private Equity Firm Eyes Healthcare Portfolio", source: "Financial Times", time: "3h ago", tag: "PE", img: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&h=250&fit=crop" },
+    { title: "Cross-Border Banking Merger Under Review", source: "Reuters", time: "5h ago", tag: "Banking", img: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=250&fit=crop" },
+    { title: "Activist Investor Pushes for Strategic Review", source: "Bloomberg", time: "6h ago", tag: "Activism", img: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400&h=250&fit=crop" }
+  ],
+  war: [
+    { title: "Latest Developments in Ukraine-Russia Conflict", source: "BBC News", time: "30m ago", tag: "Ukraine", img: "https://images.unsplash.com/photo-1542744173-05336fcc7ad4?w=400&h=250&fit=crop" },
+    { title: "Middle East Ceasefire Negotiations Continue", source: "Reuters", time: "1h ago", tag: "Middle East", img: "https://images.unsplash.com/photo-1542744173-05336fcc7ad4?w=400&h=250&fit=crop" },
+    { title: "NATO Allies Discuss Defence Spending Increases", source: "Reuters", time: "2h ago", tag: "Defence", img: "https://images.unsplash.com/photo-1564769625905-50e93615e769?w=400&h=250&fit=crop" },
+    { title: "Humanitarian Aid Corridors Established", source: "Reuters", time: "4h ago", tag: "Humanitarian", img: "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=400&h=250&fit=crop" }
+  ],
+  markets: [
+    { title: "S&P 500 Rallies on Strong Earnings Season", source: "Bloomberg", time: "1h ago", tag: "Equities", img: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=250&fit=crop" },
+    { title: "NVIDIA Stock Surges After AI Partnership", source: "Bloomberg", time: "2h ago", tag: "Tech", img: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=250&fit=crop" },
+    { title: "Oil Prices Climb Amid Supply Concerns", source: "Reuters", time: "3h ago", tag: "Commodities", img: "https://images.unsplash.com/photo-1513828583688-c52646db42da?w=400&h=250&fit=crop" },
+    { title: "Bond Yields Fall as Investors Seek Safety", source: "Financial Times", time: "4h ago", tag: "Fixed Income", img: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=400&h=250&fit=crop" }
+  ],
+  korea: [
+    { title: "Samsung Announces Next-Gen Chip Production", source: "Reuters", time: "2h ago", tag: "Tech", img: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=250&fit=crop" },
+    { title: "Bank of Korea Holds Interest Rate Steady", source: "Reuters", time: "3h ago", tag: "Economy", img: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=400&h=250&fit=crop" },
+    { title: "K-Wave Cultural Exports Hit Record High", source: "Reuters", time: "5h ago", tag: "Culture", img: "https://images.unsplash.com/photo-1617886903355-9354cfafbdcf?w=400&h=250&fit=crop" },
+    { title: "Korean Won Stabilises Against Dollar", source: "Bloomberg", time: "6h ago", tag: "FX", img: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=400&h=250&fit=crop" }
+  ]
+};
+
+var SPORTS_DATA = {
+  f1: {
+    nextRace: { name: "Monaco Grand Prix", date: "May 25, 2026", circuit: "Circuit de Monaco" },
+    standings: [
+      { pos:1, driver:"Max Verstappen", team:"Red Bull", points:187 },
+      { pos:2, driver:"Lando Norris", team:"McLaren", points:156 },
+      { pos:3, driver:"Charles Leclerc", team:"Ferrari", points:142 },
+      { pos:4, driver:"Oscar Piastri", team:"McLaren", points:118 },
+      { pos:5, driver:"Carlos Sainz", team:"Williams", points:105 }
+    ],
+    news: [
+      { title:"Verstappen Dominates Practice Sessions", source:"Autosport", time:"1h ago", img:"https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=400&h=250&fit=crop" },
+      { title:"Ferrari Brings Major Upgrade Package", source:"Autosport", time:"2h ago", img:"https://images.unsplash.com/photo-1592853625511-ad0edcc69c07?w=400&h=250&fit=crop" },
+      { title:"McLaren Challenge Red Bull at Constructors", source:"Autosport", time:"3h ago", img:"https://images.unsplash.com/photo-1541348263662-e068662d82af?w=400&h=250&fit=crop" }
+    ]
+  },
+  tennis: [
+    { title:"ATP Rankings Shift After Masters Event", source:"Reuters", time:"2h ago", img:"https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=400&h=250&fit=crop" },
+    { title:"Wimbledon Preparations Begin", source:"BBC Sport", time:"4h ago", img:"https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=400&h=250&fit=crop" },
+    { title:"Rising Star Makes Breakthrough in Clay Season", source:"Reuters", time:"5h ago", img:"https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?w=400&h=250&fit=crop" }
+  ],
+  golf: [
+    { title:"PGA Tour Event Heads Into Final Round", source:"Reuters", time:"1h ago", img:"https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=400&h=250&fit=crop" },
+    { title:"Major Championship Build-Up Intensifies", source:"Reuters", time:"3h ago", img:"https://images.unsplash.com/photo-1593111774240-d529f12cf4bb?w=400&h=250&fit=crop" },
+    { title:"European Tour Produces Dramatic Finish", source:"Reuters", time:"5h ago", img:"https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=400&h=250&fit=crop" }
+  ],
+  nba: [
+    { title:"Playoffs Conference Finals Produce Thriller", source:"ESPN", time:"1h ago", img:"https://images.unsplash.com/photo-1546519638-68e109498ffc?w=400&h=250&fit=crop" },
+    { title:"MVP Race Intensifies as Season Ends", source:"ESPN", time:"2h ago", img:"https://images.unsplash.com/photo-1504450758481-7338bbe75c8e?w=400&h=250&fit=crop" },
+    { title:"Trade Rumours Heat Up Before Deadline", source:"ESPN", time:"4h ago", img:"https://images.unsplash.com/photo-1546519638-68e109498ffc?w=400&h=250&fit=crop" }
+  ],
+  football: {
+    teams: ["Chelsea","PSG","Bayern","Tottenham"],
+    news: [
+      { title:"Champions League Semi-Final Draw Released", source:"BBC Sport", time:"1h ago", img:"https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=400&h=250&fit=crop" },
+      { title:"Chelsea Eye Summer Transfer Window Targets", source:"BBC Sport", time:"2h ago", img:"https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=400&h=250&fit=crop" },
+      { title:"PSG Confirm Manager Decision for Next Season", source:"BBC Sport", time:"3h ago", img:"https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=400&h=250&fit=crop" },
+      { title:"Bayern Munich Strengthen Squad Depth", source:"BBC Sport", time:"4h ago", img:"https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=400&h=250&fit=crop" },
+      { title:"Premier League Title Race Goes to Final Day", source:"BBC Sport", time:"5h ago", img:"https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=400&h=250&fit=crop" },
+      { title:"Tottenham Push for Top Four Finish", source:"BBC Sport", time:"6h ago", img:"https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=400&h=250&fit=crop" }
+    ]
+  },
+  highlights: [
+    { title:"Top 10 Sporting Moments of the Week", source:"ESPN", time:"1h ago", img:"https://images.unsplash.com/photo-1461896836934-bd45ba8fcbf8?w=400&h=250&fit=crop" },
+    { title:"Incredible Last-Minute Comeback in Cup Final", source:"BBC Sport", time:"3h ago", img:"https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400&h=250&fit=crop" },
+    { title:"Record-Breaking Performance Stuns Crowd", source:"BBC Sport", time:"5h ago", img:"https://images.unsplash.com/photo-1471295253337-3ceaaedca402?w=400&h=250&fit=crop" }
+  ]
+};
+
+var JOB_LINKS = [
+  { company:"Goldman Sachs", url:"https://www.goldmansachs.com/careers/search?q=analyst+finance&location=London" },
+  { company:"JP Morgan", url:"https://careers.jpmorgan.com/global/en/search?q=analyst+investment+banking&location=London" },
+  { company:"Morgan Stanley", url:"https://ms.taleo.net/careersection/2/jobsearch.ftl?lang=en&location=London" },
+  { company:"Nomura", url:"https://nomuracareers.com/search?q=analyst&location=London" },
+  { company:"Apollo", url:"https://www.apollo.com/careers?q=analyst" },
+  { company:"Ares", url:"https://www.aresmgmt.com/careers?q=analyst" },
+  { company:"LinkedIn", url:"https://www.linkedin.com/jobs/search/?keywords=analyst+leverage+finance+debt+private+credit+investment+banking&location=London" },
+  { company:"Indeed", url:"https://uk.indeed.com/jobs?q=analyst+investment+banking+debt+finance&l=London" },
+  { company:"eFinancialCareers", url:"https://www.efinancialcareers.co.uk/search?q=analyst+leverage+finance+private+credit&location=London" }
+];
+
+var STATUS_COLORS = { Applied:"#007AFF", Interview:"#FF9500", Offer:"#34C759", Rejected:"#FF3B30", Withdrawn:"#8E8E93" };
+
+var DETAILS = {
+  "Federal Reserve Signals Cautious Approach on Rates": "The Federal Reserve has indicated it will maintain its current interest rate policy while monitoring inflation data. Chair Powell emphasized the need for patience, noting that while inflation has moderated, it remains above the 2% target. Markets are now pricing in fewer rate cuts for the remainder of the year.",
+  "Major Tech Acquisition Announced at $12B Valuation": "A landmark acquisition in the technology sector has been announced at a $12 billion valuation. The deal involves a major cloud computing firm acquiring an AI startup, signalling continued consolidation in the tech industry. Analysts note this could reshape the competitive landscape in enterprise AI services.",
+  "Private Credit Market Reaches Record Size": "The global private credit market has expanded to record levels, driven by banks pulling back from certain lending activities and institutional investors seeking higher yields. Key segments include direct lending, mezzanine financing, and distressed debt strategies. This creates significant opportunities for analysts in leveraged finance.",
+  "Champions League Semi-Final Draw Released": "UEFA has revealed the semi-final pairings for this season's Champions League. The draw has produced blockbuster matchups that promise high-intensity encounters across both legs. Teams are preparing their tactical approaches for what promises to be a thrilling conclusion to the tournament."
+};
+
+function getDetail(title) {
+  return DETAILS[title] || 'This article covers the latest developments in ' + title + '. The story has significant implications across multiple sectors. Read the full article from the original source for comprehensive expert analysis.';
+}
+
+function getGreeting() {
+  var h = new Date().getHours();
+  return h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening";
+}
+
+function getDateStr() {
+  return new Date().toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+}
+
+function formatDate(d) {
+  return new Date(d).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" });
+}
+
+var state = {
+  section: "news",
+  newsTab: "world",
+  sportTab: "f1",
+  selectedArticle: null,
+  jobs: JSON.parse(localStorage.getItem("dashboard-jobs") || "[]"),
+  showJobForm: false,
+  jobForm: { title:"", company:"", description:"", link:"", status:"Applied" },
+  chatMessages: [],
+  chatInput: "",
+  chatLoading: false
+};
+
+function setState(updates) {
+  for (var k in updates) state[k] = updates[k];
+  render();
+}
+
+function newsItemHTML(item, isSport) {
+  var isActive = state.selectedArticle && state.selectedArticle.title === item.title;
+  var imgHtml = item.img
+    ? '<img class="news-thumb" src="' + item.img + '" alt="" onerror="this.style.display=\'none\'">'
+    : '<div style="width:40px;height:40px;border-radius:8px;background:var(--pill-bg);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--text-tertiary);flex-shrink:0">' + item.source.charAt(0) + '</div>';
+  var tagHtml = item.tag ? '<span>·</span><span class="tag">' + item.tag + '</span>' : '';
+  var dataStr = encodeURIComponent(JSON.stringify(item));
+  return '<div class="news-item' + (isActive ? ' active' : '') + '" onclick="selectArticle(\'' + dataStr + '\')">' +
+    imgHtml +
+    '<div style="flex:1;min-width:0">' +
+      '<div class="news-title">' + item.title + '</div>' +
+      '<div class="news-meta"><span class="news-source">' + item.source + '</span><span>·</span><span>' + item.time + '</span>' + tagHtml + '</div>' +
+    '</div></div>';
+}
+
+function renderNews() {
+  var items = NEWS_DATA[state.newsTab] || [];
+  var tabs = ["world","finance","ma","war","markets","korea"];
+  var labels = { world:"World", finance:"Finance", ma:"M&A", war:"Conflicts", markets:"Markets", korea:"Korea" };
+  var pills = tabs.map(function(t) {
+    return '<button class="pill' + (state.newsTab === t ? ' active' : '') + '" onclick="setNewsTab(\'' + t + '\')">' + labels[t] + '</button>';
+  }).join('');
+  return '<div class="pills">' + pills + '</div>' + items.map(function(n) { return newsItemHTML(n, false); }).join('');
+}
+
+function renderF1() {
+  var d = SPORTS_DATA.f1;
+  var posColors = ["#FFD700","#C0C0C0","#CD7F32"];
+  var rows = d.standings.map(function(s, i) {
+    var bg = posColors[i] || 'var(--pill-bg)';
+    var col = i < 3 ? '#1a1a1a' : 'var(--text-secondary)';
+    return '<div class="standing-row"><div class="standing-pos" style="background:' + bg + ';color:' + col + '">' + s.pos + '</div><div><div class="standing-name">' + s.driver + '</div><div class="standing-team">' + s.team + '</div></div><div class="standing-pts">' + s.points + ' <span>pts</span></div></div>';
+  }).join('');
+  var news = d.news.map(function(n) { return newsItemHTML(n, true); }).join('');
+  return '<div class="f1-header"><div class="f1-label">Next Race</div><div class="f1-race">' + d.nextRace.name + '</div><div class="f1-circuit">' + d.nextRace.circuit + ' · ' + d.nextRace.date + '</div></div>' +
+    '<div class="section-label">Driver Standings</div><div class="standings">' + rows + '</div>' +
+    '<div class="section-label">Latest News</div><div class="inner-card">' + news + '</div>';
+}
+
+function renderSports() {
+  var tabs = ["f1","tennis","golf","nba","football","highlights"];
+  var labels = { f1:"F1", tennis:"Tennis", golf:"Golf", nba:"NBA", football:"Football", highlights:"Highlights" };
+  var pills = tabs.map(function(t) {
+    return '<button class="pill' + (state.sportTab === t ? ' active' : '') + '" onclick="setSportTab(\'' + t + '\')">' + labels[t] + '</button>';
+  }).join('');
+  var t = state.sportTab;
+  var content = "";
+  if (t === "f1") {
+    content = renderF1();
+  } else if (t === "football") {
+    var d = SPORTS_DATA.football;
+    var chips = d.teams.map(function(tm) { return '<span class="team-chip">' + tm + '</span>'; }).join('');
+    content = '<div class="team-chips">' + chips + '</div><div class="inner-card">' + d.news.map(function(n) { return newsItemHTML(n, true); }).join('') + '</div>';
+  } else {
+    var items = SPORTS_DATA[t] || [];
+    content = '<div class="inner-card">' + items.map(function(n) { return newsItemHTML(n, true); }).join('') + '</div>';
+  }
+  return '<div class="pills">' + pills + '</div><div class="sec-pad">' + content + '</div>';
+}
+
+function renderJobs() {
+  var jobs = state.jobs;
+  var statusKeys = Object.keys(STATUS_COLORS);
+  var stats = statusKeys.map(function(s) {
+    var count = jobs.filter(function(j) { return j.status === s; }).length;
+    return '<div class="stat-card"><div class="stat-num" style="color:' + STATUS_COLORS[s] + '">' + count + '</div><div class="stat-label">' + s + '</div></div>';
+  }).join('');
+  var links = JOB_LINKS.map(function(l) {
+    return '<a class="job-link" href="' + l.url + '" target="_blank">' + l.company + ' <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>';
+  }).join('');
+  var formHtml = state.showJobForm ? '<div class="job-form">' +
+    ['title','company','description','link'].map(function(key) {
+      var labels2 = { title:"Job Title", company:"Company", description:"Description", link:"Link" };
+      var phs = { title:"e.g. Leveraged Finance Analyst", company:"e.g. Goldman Sachs", description:"Brief role description", link:"https://..." };
+      return '<div class="form-field"><label class="form-label">' + labels2[key] + '</label><input class="form-input" value="' + (state.jobForm[key] || '') + '" placeholder="' + phs[key] + '" oninput="updateJobForm(\'' + key + '\', this.value)"></div>';
+    }).join('') +
+    '<button class="btn-primary" onclick="addJob()">Save</button><button class="btn-secondary" onclick="toggleJobForm()">Cancel</button></div>' : '';
+  var jobListHtml = jobs.length > 0 ? '<div class="job-list">' + jobs.map(function(j, i) {
+    var opts = statusKeys.map(function(s) { return '<option value="' + s + '"' + (j.status===s?' selected':'') + '>' + s + '</option>'; }).join('');
+    var linkHtml = j.link ? '<a href="' + j.link + '" target="_blank" style="color:var(--accent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>' : '';
+    return '<div class="job-item"><div><div class="job-title-text">' + j.title + '</div><div class="job-company">' + j.company + ' · ' + formatDate(j.date) + '</div></div><div class="job-actions"><select class="status-badge" style="background:' + STATUS_COLORS[j.status] + '18;color:' + STATUS_COLORS[j.status] + '" onchange="updateJobStatus(' + j.id + ', this.value)">' + opts + '</select>' + linkHtml + '<button class="remove-btn" onclick="removeJob(' + j.id + ')">×</button></div></div>';
+  }).join('') + '</div>' : '';
+  return '<div class="jobs-container">' +
+    '<div class="stats-grid"><div class="stat-card"><div class="stat-num">' + jobs.length + '</div><div class="stat-label">Total</div></div>' + stats + '</div>' +
+    '<div class="links-label">Quick Search Links</div><div class="job-links">' + links + '</div>' +
+    '<button class="add-job-btn" onclick="toggleJobForm()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log New Application</button>' +
+    formHtml + jobListHtml + '</div>';
+}
+
+function renderPanel() {
+  if (!state.selectedArticle) return '';
+  var item = state.selectedArticle;
+  var msgs = state.chatMessages;
+  var msgsHtml = msgs.map(function(m) {
+    return '<div class="message ' + m.role + '"><div class="message-bubble ' + (m.role==='user'?'msg-user':'msg-assistant') + '">' + m.text + '</div></div>';
+  }).join('');
+  var suggestHtml = msgs.length === 0 ? '<div class="chat-hint">Ask a question about this article.</div>' +
+    ['What does this mean for markets?','Explain the key terms','How does this affect CIB?'].map(function(q) {
+      return '<button class="suggestion-btn" onclick="setSuggestion(\'' + q + '\')">' + q + '</button>';
+    }).join('') : '';
+  var loadingHtml = state.chatLoading ? '<div class="message"><div class="message-bubble msg-assistant"><span class="thinking">Thinking...</span></div></div>' : '';
+  var sendBtnStyle = state.chatInput.trim() ? 'background:var(--accent);color:white;' : 'background:var(--pill-bg);color:var(--text-tertiary);cursor:default;';
+  var imgHtml = item.img ? '<img class="panel-img" src="' + item.img + '" alt="" onerror="this.style.display=\'none\'">' : '';
+  var tagHtml = item.tag ? '<span class="tag">' + item.tag + '</span>' : '';
+  return '<div class="overlay" onclick="closePanel()"></div>' +
+    '<div class="detail-panel">' +
+      '<div class="panel-header"><span class="panel-title">Article Detail</span><button class="close-btn" onclick="closePanel()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>' +
+      '<div class="panel-article">' + imgHtml +
+        '<div class="panel-meta"><span style="font-weight:500;color:var(--text-secondary)">' + item.source + '</span><span style="color:var(--text-tertiary)">· ' + item.time + '</span>' + tagHtml + '</div>' +
+        '<div class="panel-art-title">' + item.title + '</div>' +
+        '<div class="panel-art-body">' + getDetail(item.title) + '</div></div>' +
+      '<div class="chat-section">' +
+        '<div class="chat-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Ask about this article</div>' +
+        '<div class="chat-messages" id="chatbox">' + suggestHtml + msgsHtml + loadingHtml + '</div>' +
+        '<div class="chat-input-area"><input class="chat-input" id="chatinput" placeholder="Ask about this article..." value="' + state.chatInput + '" oninput="updateChatInput(this.value)" onkeydown="if(event.key===\'Enter\') sendChat()"><button class="send-btn" style="' + sendBtnStyle + '" onclick="sendChat()"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button></div>' +
+      '</div>' +
+    '</div>';
+}
+
+function render() {
+  var sections = ["news","sports","jobs"];
+  var secLabels = { news:"News", sports:"Sports", jobs:"Jobs" };
+  var icons = {
+    news:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/><line x1="10" y1="6" x2="18" y2="6"/><line x1="10" y1="10" x2="18" y2="10"/><line x1="10" y1="14" x2="14" y2="14"/></svg>',
+    sports:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg>',
+    jobs:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>'
+  };
+  var navBtns = sections.map(function(s) {
+    return '<button class="nav-btn' + (state.section===s?' active':'') + '" onclick="setSection(\'' + s + '\')">' + icons[s] + ' ' + secLabels[s] + '</button>';
+  }).join('');
+  var bodyContent = state.section==="news" ? renderNews() : state.section==="sports" ? renderSports() : renderJobs();
+  document.getElementById("app").innerHTML =
+    '<div class="header"><div class="date-str">' + getDateStr() + '</div><h1 class="greeting">' + getGreeting() + '.</h1><div class="nav">' + navBtns + '</div></div>' +
+    '<div class="content"><div class="card">' + bodyContent + '</div></div>' +
+    renderPanel();
+  var cb = document.getElementById("chatbox");
+  if (cb) cb.scrollTop = cb.scrollHeight;
+}
+
+function setSection(s) { state.section=s; state.selectedArticle=null; render(); }
+function setNewsTab(t) { state.newsTab=t; render(); }
+function setSportTab(t) { state.sportTab=t; render(); }
+function selectArticle(encoded) {
+  var item = JSON.parse(decodeURIComponent(encoded));
+  state.selectedArticle=item; state.chatMessages=[]; state.chatInput="";
+  render();
+}
+function closePanel() { state.selectedArticle=null; state.chatMessages=[]; render(); }
+function toggleJobForm() { state.showJobForm=!state.showJobForm; render(); }
+function updateJobForm(key, val) { state.jobForm[key]=val; }
+function updateChatInput(val) { state.chatInput=val; var btn=document.querySelector('.send-btn'); if(btn) btn.style.background = val.trim() ? 'var(--accent)' : 'var(--pill-bg)'; if(btn) btn.style.color = val.trim() ? 'white' : 'var(--text-tertiary)'; }
+function setSuggestion(q) { state.chatInput=q; render(); setTimeout(function(){ var el=document.getElementById("chatinput"); if(el){el.focus();el.value=q;} },0); }
+
+function addJob() {
+  if (!state.jobForm.title || !state.jobForm.company) return;
+  var newJob = Object.assign({}, state.jobForm, { id: Date.now(), date: new Date().toISOString().slice(0,10) });
+  state.jobs.push(newJob);
+  localStorage.setItem("dashboard-jobs", JSON.stringify(state.jobs));
+  state.showJobForm=false;
+  state.jobForm={ title:"", company:"", description:"", link:"", status:"Applied" };
+  render();
+}
+
+function updateJobStatus(id, status) {
+  state.jobs = state.jobs.map(function(j) { return j.id===id ? Object.assign({},j,{status:status}) : j; });
+  localStorage.setItem("dashboard-jobs", JSON.stringify(state.jobs));
+  render();
+}
+
+function removeJob(id) {
+  state.jobs = state.jobs.filter(function(j) { return j.id !== id; });
+  localStorage.setItem("dashboard-jobs", JSON.stringify(state.jobs));
+  render();
+}
+
+async function sendChat() {
+  var input = state.chatInput.trim();
+  if (!input || state.chatLoading || !state.selectedArticle) return;
+  var item = state.selectedArticle;
+  state.chatMessages.push({ role:"user", text: input });
+  state.chatInput = "";
+  state.chatLoading = true;
+  render();
+  try {
+    var resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:1000,
+        system:"You are a helpful finance and news assistant. The user is reading: \"" + item.title + "\" from " + item.source + ". Context: " + getDetail(item.title) + ". Help them understand concepts, terms, and implications in 2-3 paragraphs max. The user works in Corporate and Investment Banking as an analyst in London.",
+        messages: state.chatMessages.map(function(m){ return { role: m.role==="user"?"user":"assistant", content: m.text }; })
+      })
+    });
+    var data = await resp.json();
+    var reply = (data.content||[]).map(function(c){ return c.text||""; }).join("") || "Sorry, could not process that.";
+    state.chatMessages.push({ role:"assistant", text: reply });
+  } catch(e) {
+    state.chatMessages.push({ role:"assistant", text:"Unable to connect. Please try again." });
+  }
+  state.chatLoading = false;
+  render();
+}
+
+render();
+</script>
 </body>
 </html>
